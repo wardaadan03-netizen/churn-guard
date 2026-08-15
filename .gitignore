@@ -1,47 +1,24 @@
-# Byte-compiled / optimized / DLL files
+# Python bytecode
 __pycache__/
 *.py[cod]
-*$py.class
 *.so
 *.pyd
 
-# Python distributions
-.Python
-env/
-venv/
+# Virtual environments
 .venv/
+venv/
+env/
 ENV/
-env.bak/
-venv.bak/
-pythonenv*
 
 # Build artifacts
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
 
-# Package files
-*.pkl
-*.joblib
-*.json
-!requirements.json
-!package.json
+# Keep ChurnGuard model artifacts
+# (DO NOT ignore .pkl/.json globally)
 
-# Data files (keep only small samples)
+# Data files
 data/*.csv
 data/*.xlsx
 data/*.xls
@@ -50,8 +27,7 @@ data/*.sqlite
 data/*.sqlite3
 !data/.gitkeep
 
-
-# Outputs (generated files)
+# Generated outputs
 outputs/*.png
 outputs/*.jpg
 outputs/*.jpeg
@@ -61,154 +37,36 @@ outputs/*.csv
 outputs/*.html
 !outputs/.gitkeep
 
-# Dashboard exports
-dashboard/*.csv
-dashboard/*.xlsx
-dashboard/*.pbix
-!dashboard/.gitkeep
-
-# Jupyter Notebooks
+# Jupyter
 .ipynb_checkpoints/
 *.ipynb
-*/.ipynb_checkpoints/
 
-# VS Code
+# IDE
 .vscode/
-*.code-workspace
-.vscode-server/
-
-# PyCharm
 .idea/
-*.iml
-*.iws
-*.ipr
-.idea_modules/
 
-# Sublime Text
-*.sublime-project
-*.sublime-workspace
-
-# Vim/Neovim
-*.swp
-*.swo
-*.un~
-*~
-
-# Windows
-Thumbs.db
-Desktop.ini
-ehthumbs.db
-*.DS_Store
-
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-._*
-
-# Linux
-*.tmp
-*.temp
-*.log
-logs/
-
-# Environment variables
+# Environment/secrets
 .env
-.env.local
-.env.*.local
-
-# Coverage reports
-coverage/
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-
-# Profiling data
-*.prof
-
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-
-# Secrets and keys
+.env.*
 *.pem
 *.key
 *.crt
 *.p12
-secrets.yaml
-config.yaml
 
-# Terraform
-*.tfstate
-*.tfstate.*
-.terraform/
-
-# Docker
-*.dockerignore
-Dockerfile
-docker-compose*.yml
-.docker/
-
-# Logging
+# Logs
 *.log
 logs/
-debug.log
-error.log
 
-# Streamlit
-.streamlit/
-*.streamlit/
-
-# Mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre
-.pyre/
-
-# Pytype
-.pytype/
-
-# Jupyter Notebooks
-*.ipynb_checkpoints/
-*.ipynb
-*/.ipynb_checkpoints/
-.ipynb_checkpoints/
-
-# Other
-*.bak
-*.backup
-*.old
-*.orig
-*.rej
-*.patch
-*.diff
-
-# macOS system files
+# OS
+Thumbs.db
 .DS_Store
-.AppleDouble
-.LSOverride
-._*
 
-# Linux system files
-.directory
-*.tmp
+# Power BI / Tableau
+*.pbix
+*.twb
+*.twbx
 
-# Project specific
-*.pbix  # Power BI files (large)
-*.twb   # Tableau files
-*.twbx  # Tableau packaged files
+# Large data formats
 *.parquet
 *.arrow
 *.feather
@@ -217,10 +75,3 @@ dmypy.json
 test_*.py
 *_test.py
 tests/
-test-results/
-*.test-result
-
-# Authentication files
-.aws/
-.gcloud/
-.azure/
