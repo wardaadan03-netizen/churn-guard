@@ -50,13 +50,6 @@ data/*.sqlite
 data/*.sqlite3
 !data/.gitkeep
 
-# Model artifacts (trained models are too large)
-models/*.pkl
-models/*.joblib
-models/*.h5
-models/*.pt
-models/*.pb
-!models/.gitkeep
 
 # Outputs (generated files)
 outputs/*.png
