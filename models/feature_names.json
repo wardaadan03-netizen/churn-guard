@@ -11,8 +11,6 @@
   "support_tickets",
   "refund_requested",
   "delivery_delay_days",
-  "satisfaction_score",
-  "nps_score",
   "marketing_spend_per_user",
   "lifetime_value",
   "last_3_month_purchase_freq",
@@ -30,13 +28,6 @@
   "country_India",
   "country_UK",
   "country_USA",
-  "city_Berlin",
-  "city_Delhi",
-  "city_Dhaka",
-  "city_Hamburg",
-  "city_London",
-  "city_Mumbai",
-  "city_New York",
   "acquisition_channel_Email",
   "acquisition_channel_Facebook Ads",
   "acquisition_channel_Google Ads",
@@ -53,5 +44,9 @@
   "payment_method_SEPA",
   "payment_method_UPI",
   "used_coupon_0",
-  "used_coupon_1"
+  "used_coupon_1",
+  "is_premium_user_0",
+  "is_premium_user_1",
+  "is_loyal_0",
+  "is_loyal_1"
 ]

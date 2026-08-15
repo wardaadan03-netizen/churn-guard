@@ -1,5 +1,6 @@
 """
-ChurnGuard - Machine Learning Training Pipeline
+ChurnGuard
+End-to-End Customer Churn Machine Learning Pipeline
 """
 
 import os
@@ -38,60 +39,51 @@ from preprocess import (
     create_features,
     build_preprocessor,
     get_feature_names,
-    save_artifacts
+    save_artifacts,
+    BASE_DIR,
+    DATA_DIR,
+    MODEL_DIR,
+    OUTPUT_DIR
 )
 
 warnings.filterwarnings("ignore")
 
 
-# ============================================================
-# DIRECTORIES
-# ============================================================
-
-PROJECT_ROOT = os.path.dirname(
-    os.path.dirname(
-        os.path.abspath(__file__)
-    )
-)
+# ---------------------------------------------------------
+# PATHS
+# ---------------------------------------------------------
 
 DATA_PATH = os.path.join(
-    PROJECT_ROOT,
-    "data",
+    DATA_DIR,
     "Sales - Marketing customer dataset.csv"
 )
 
-OUTPUT_DIR = os.path.join(
-    PROJECT_ROOT,
-    "outputs"
-)
 
-MODEL_DIR = os.path.join(
-    PROJECT_ROOT,
-    "models"
-)
-
-
-# ============================================================
+# ---------------------------------------------------------
 # PREPARE DATA
-# ============================================================
+# ---------------------------------------------------------
 
 def prepare_data(df):
 
     df = df.copy()
 
+    if "churn" not in df.columns:
+        raise ValueError(
+            "The dataset does not contain a 'churn' column."
+        )
+
     y = df["churn"]
 
     X = df.drop(
-        "churn",
-        axis=1
+        columns=["churn"]
     )
 
     return X, y
 
 
-# ============================================================
+# ---------------------------------------------------------
 # CONFUSION MATRIX
-# ============================================================
+# ---------------------------------------------------------
 
 def plot_confusion_matrix(
     y_test,
@@ -110,13 +102,14 @@ def plot_confusion_matrix(
     )
 
     plt.figure(
-        figsize=(7, 5)
+        figsize=(6, 5)
     )
 
     sns.heatmap(
         cm,
         annot=True,
         fmt="d",
+        cmap="Blues",
         xticklabels=[
             "Active",
             "Churned"
@@ -131,26 +124,21 @@ def plot_confusion_matrix(
         f"Confusion Matrix - {model_name}"
     )
 
-    plt.xlabel(
-        "Predicted"
-    )
-
-    plt.ylabel(
-        "Actual"
-    )
+    plt.xlabel("Predicted")
+    plt.ylabel("Actual")
 
     plt.tight_layout()
 
     filename = (
         model_name
-        .lower()
         .replace(" ", "_")
+        .lower()
     )
 
     plt.savefig(
         os.path.join(
             OUTPUT_DIR,
-            f"confusion_matrix_{filename}.png"
+            f"cm_{filename}.png"
         ),
         dpi=150
     )
@@ -158,11 +146,11 @@ def plot_confusion_matrix(
     plt.close()
 
 
-# ============================================================
+# ---------------------------------------------------------
 # FEATURE IMPORTANCE
-# ============================================================
+# ---------------------------------------------------------
 
-def feature_importance_plot(
+def plot_feature_importance(
     model,
     feature_names
 ):
@@ -182,7 +170,7 @@ def feature_importance_plot(
     )[::-1][:20]
 
     plt.figure(
-        figsize=(10, 7)
+        figsize=(12, 8)
     )
 
     plt.bar(
@@ -201,7 +189,7 @@ def feature_importance_plot(
     )
 
     plt.title(
-        "Top 20 Feature Importance"
+        "Top 20 Feature Importances"
     )
 
     plt.tight_layout()
@@ -216,179 +204,118 @@ def feature_importance_plot(
 
     plt.close()
 
-
-# ============================================================
-# MODEL EVALUATION
-# ============================================================
-
-def evaluate_model(
-    model,
-    X_test,
-    y_test
-):
-
-    y_pred = model.predict(
-        X_test
+    print(
+        "✅ Feature importance saved."
     )
 
-    y_probability = (
-        model.predict_proba(X_test)[:, 1]
-    )
 
-    metrics = {
-
-        "Accuracy":
-            accuracy_score(
-                y_test,
-                y_pred
-            ),
-
-        "Precision":
-            precision_score(
-                y_test,
-                y_pred,
-                zero_division=0
-            ),
-
-        "Recall":
-            recall_score(
-                y_test,
-                y_pred,
-                zero_division=0
-            ),
-
-        "F1":
-            f1_score(
-                y_test,
-                y_pred,
-                zero_division=0
-            ),
-
-        "ROC-AUC":
-            roc_auc_score(
-                y_test,
-                y_probability
-            )
-    }
-
-    return metrics, y_pred
-
-
-# ============================================================
+# ---------------------------------------------------------
 # MAIN
-# ============================================================
+# ---------------------------------------------------------
 
 def main():
 
-    print("=" * 65)
-
-    print(
-        "🚀 Starting ChurnGuard Training Pipeline"
-    )
-
-    print("=" * 65)
-
-    # --------------------------------------------------------
-    # Create directories
-    # --------------------------------------------------------
-
-    os.makedirs(
-        OUTPUT_DIR,
-        exist_ok=True
-    )
+    print("=" * 60)
+    print("🚀 CHURNGUARD TRAINING PIPELINE")
+    print("=" * 60)
 
     os.makedirs(
         MODEL_DIR,
         exist_ok=True
     )
 
-    # --------------------------------------------------------
-    # Load data
-    # --------------------------------------------------------
+    os.makedirs(
+        OUTPUT_DIR,
+        exist_ok=True
+    )
+
+    # -----------------------------------------------------
+    # LOAD DATA
+    # -----------------------------------------------------
 
     print("\n📥 Loading dataset...")
+
+    print(
+        f"📍 Dataset path:\n{DATA_PATH}"
+    )
 
     df = load_data(
         DATA_PATH
     )
 
     print(
-        f"✅ Raw dataset: {df.shape}"
+        f"✅ Raw data shape: {df.shape}"
     )
 
-    # --------------------------------------------------------
-    # Clean
-    # --------------------------------------------------------
+    # -----------------------------------------------------
+    # CLEAN DATA
+    # -----------------------------------------------------
 
     print("\n🧹 Cleaning data...")
 
     df = clean_data(df)
 
-    # --------------------------------------------------------
-    # Feature engineering
-    # --------------------------------------------------------
-
     print(
-        "\n⚙️ Creating features..."
+        f"✅ After cleaning: {df.shape}"
     )
+
+    # -----------------------------------------------------
+    # FEATURE ENGINEERING
+    # -----------------------------------------------------
+
+    print("\n⚙️ Creating features...")
 
     df = create_features(df)
 
     print(
-        f"✅ Final dataset: {df.shape}"
+        f"✅ Final dataset shape: {df.shape}"
     )
 
-    # --------------------------------------------------------
-    # Prepare X and y
-    # --------------------------------------------------------
+    # -----------------------------------------------------
+    # X / Y
+    # -----------------------------------------------------
 
-    X, y = prepare_data(df)
-
-    print(
-        "\n🎯 Target distribution:"
+    X, y = prepare_data(
+        df
     )
+
+    print("\n📊 Target distribution:")
 
     print(
         y.value_counts()
     )
 
     print(
-        f"\n📊 Churn rate: {y.mean():.2%}"
+        f"\n📈 Churn rate: {y.mean():.2%}"
     )
 
-    # --------------------------------------------------------
-    # Train/test split
-    # --------------------------------------------------------
+    # -----------------------------------------------------
+    # TRAIN TEST SPLIT
+    # -----------------------------------------------------
 
-    X_train, X_test, y_train, y_test = (
-        train_test_split(
-            X,
-            y,
-            test_size=0.20,
-            random_state=42,
-            stratify=y
-        )
-    )
-
-    print(
-        f"\nTraining samples: {len(X_train)}"
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.20,
+        random_state=42,
+        stratify=y
     )
 
     print(
-        f"Testing samples: {len(X_test)}"
+        f"\n✅ Training samples: {len(X_train)}"
     )
-
-    # --------------------------------------------------------
-    # Preprocessing
-    # --------------------------------------------------------
 
     print(
-        "\n🔧 Building preprocessing pipeline..."
+        f"✅ Testing samples: {len(X_test)}"
     )
 
-    preprocessor = (
-        build_preprocessor()
-    )
+    # -----------------------------------------------------
+    # PREPROCESSING
+    # -----------------------------------------------------
+
+    print("\n🔧 Building preprocessing pipeline...")
+
+    preprocessor = build_preprocessor()
 
     X_train_transformed = (
         preprocessor.fit_transform(
@@ -409,19 +336,19 @@ def main():
     )
 
     print(
-        "Processed features:",
-        X_train_transformed.shape[1]
+        f"✅ Transformed features: "
+        f"{X_train_transformed.shape[1]}"
     )
 
-    # --------------------------------------------------------
-    # Class imbalance
-    # --------------------------------------------------------
+    # -----------------------------------------------------
+    # MODELS
+    # -----------------------------------------------------
 
-    negative = sum(
+    negative = np.sum(
         y_train == 0
     )
 
-    positive = sum(
+    positive = np.sum(
         y_train == 1
     )
 
@@ -430,10 +357,6 @@ def main():
         if positive > 0
         else 1
     )
-
-    # --------------------------------------------------------
-    # Models
-    # --------------------------------------------------------
 
     models = {
 
@@ -446,9 +369,9 @@ def main():
 
         "Random Forest":
             RandomForestClassifier(
-                n_estimators=200,
+                n_estimators=300,
                 max_depth=15,
-                min_samples_split=5,
+                min_samples_split=10,
                 class_weight="balanced",
                 random_state=42,
                 n_jobs=-1
@@ -460,24 +383,22 @@ def main():
                 max_depth=6,
                 learning_rate=0.1,
                 scale_pos_weight=scale_pos_weight,
-                eval_metric="logloss",
-                random_state=42
+                random_state=42,
+                eval_metric="logloss"
             )
     }
 
-    # --------------------------------------------------------
-    # Train
-    # --------------------------------------------------------
+    # -----------------------------------------------------
+    # TRAIN
+    # -----------------------------------------------------
 
-    print(
-        "\n🤖 Training models..."
-    )
-
-    results = {}
+    results = []
 
     best_model = None
     best_model_name = None
     best_f1 = -1
+
+    print("\n🤖 Training models...")
 
     for name, model in models.items():
 
@@ -490,34 +411,73 @@ def main():
             y_train
         )
 
-        metrics, y_pred = (
-            evaluate_model(
-                model,
-                X_test_transformed,
-                y_test
-            )
+        y_pred = model.predict(
+            X_test_transformed
         )
 
-        results[name] = metrics
+        y_probability = (
+            model.predict_proba(
+                X_test_transformed
+            )[:, 1]
+        )
+
+        accuracy = accuracy_score(
+            y_test,
+            y_pred
+        )
+
+        precision = precision_score(
+            y_test,
+            y_pred,
+            zero_division=0
+        )
+
+        recall = recall_score(
+            y_test,
+            y_pred,
+            zero_division=0
+        )
+
+        f1 = f1_score(
+            y_test,
+            y_pred,
+            zero_division=0
+        )
+
+        roc_auc = roc_auc_score(
+            y_test,
+            y_probability
+        )
+
+        results.append({
+
+            "model": name,
+            "accuracy": accuracy,
+            "precision": precision,
+            "recall": recall,
+            "f1": f1,
+            "roc_auc": roc_auc
+
+        })
 
         print(
-            f"Accuracy : {metrics['Accuracy']:.4f}"
+            f"   Accuracy:  {accuracy:.4f}"
         )
 
         print(
-            f"Precision: {metrics['Precision']:.4f}"
+            f"   Precision: {precision:.4f}"
         )
 
         print(
-            f"Recall   : {metrics['Recall']:.4f}"
+            f"   Recall:    {recall:.4f}"
         )
 
         print(
-            f"F1       : {metrics['F1']:.4f}"
+            f"   F1:        {f1:.4f}"
         )
 
         print(
-            f"ROC-AUC  : {metrics['ROC-AUC']:.4f}"
+            f"   ROC-AUC:   {roc_auc:.4f}"
         )
 
         plot_confusion_matrix(
@@ -526,65 +486,61 @@ def main():
             name
         )
 
-        if metrics["F1"] > best_f1:
+        if f1 > best_f1:
 
-            best_f1 = metrics["F1"]
+            best_f1 = f1
 
             best_model = model
 
             best_model_name = name
 
-    # --------------------------------------------------------
-    # Results
-    # --------------------------------------------------------
-
-    print(
-        "\n" + "=" * 65
-    )
-
-    print(
-        "📊 MODEL COMPARISON"
-    )
-
-    print(
-        "=" * 65
-    )
+    # -----------------------------------------------------
+    # RESULTS
+    # -----------------------------------------------------
 
     results_df = pd.DataFrame(
         results
-    ).T
-
-    results_df = results_df.sort_values(
-        "F1",
-        ascending=False
     )
+
+    print("\n" + "=" * 60)
+    print("📊 MODEL PERFORMANCE")
+    print("=" * 60)
 
     print(
         results_df.round(4)
     )
 
+    results_path = os.path.join(
+        OUTPUT_DIR,
+        "model_metrics.csv"
+    )
+
     results_df.to_csv(
-        os.path.join(
-            OUTPUT_DIR,
-            "model_metrics.csv"
-        )
-    )
-
-    # --------------------------------------------------------
-    # Best model
-    # --------------------------------------------------------
-
-    print(
-        f"\n🏆 Best Model: {best_model_name}"
+        results_path,
+        index=False
     )
 
     print(
-        f"🏆 Best F1 Score: {best_f1:.4f}"
+        f"\n✅ Metrics saved to:\n{results_path}"
     )
 
-    # --------------------------------------------------------
-    # Cross validation
-    # --------------------------------------------------------
+    # -----------------------------------------------------
+    # BEST MODEL
+    # -----------------------------------------------------
+
+    print("\n🏆 BEST MODEL")
+
+    print(
+        f"Model: {best_model_name}"
+    )
+
+    print(
+        f"F1 Score: {best_f1:.4f}"
+    )
+
+    # -----------------------------------------------------
+    # CROSS VALIDATION
+    # -----------------------------------------------------
 
     print(
         "\n🔄 Running 5-fold cross-validation..."
@@ -606,25 +562,38 @@ def main():
 
     print(
         f"CV F1: {cv_scores.mean():.4f}"
-        f" ± {cv_scores.std():.4f}"
     )
-
-    # --------------------------------------------------------
-    # Feature importance
-    # --------------------------------------------------------
 
     print(
-        "\n📈 Creating feature importance..."
+        f"CV Std: {cv_scores.std():.4f}"
     )
 
-    feature_importance_plot(
+    # -----------------------------------------------------
+    # FEATURE IMPORTANCE
+    # -----------------------------------------------------
+
+    plot_feature_importance(
         best_model,
         feature_names
     )
 
-    # --------------------------------------------------------
-    # Classification report
-    # --------------------------------------------------------
+    # -----------------------------------------------------
+    # SAVE ARTIFACTS
+    # -----------------------------------------------------
+
+    print(
+        "\n💾 Saving model artifacts..."
+    )
+
+    save_artifacts(
+        preprocessor,
+        feature_names,
+        best_model
+    )
+
+    # -----------------------------------------------------
+    # CLASSIFICATION REPORT
+    # -----------------------------------------------------
 
     y_pred_best = (
         best_model.predict(
@@ -648,60 +617,70 @@ def main():
         )
     )
 
-    # --------------------------------------------------------
-    # Save artifacts
-    # --------------------------------------------------------
+    # -----------------------------------------------------
+    # VERIFY FILES
+    # -----------------------------------------------------
 
-    print(
-        "\n💾 Saving model artifacts..."
-    )
+    print("\n🔎 VERIFYING MODEL FILES...")
 
-    save_artifacts(
-        preprocessor,
-        feature_names,
-        best_model,
-        output_dir=MODEL_DIR
-    )
+    required_files = [
 
-    print(
-        "\n" + "=" * 65
-    )
+        os.path.join(
+            MODEL_DIR,
+            "best_model.pkl"
+        ),
 
-    print(
-        "✅ CHURNGUARD TRAINING COMPLETE"
-    )
+        os.path.join(
+            MODEL_DIR,
+            "preprocessor.pkl"
+        ),
 
-    print(
-        "=" * 65
-    )
+        os.path.join(
+            MODEL_DIR,
+            "feature_names.json"
+        )
+    ]
 
-    print(
-        "\nCreated:"
-    )
+    all_exist = True
 
-    print(
-        "📁 models/best_model.pkl"
-    )
+    for file_path in required_files:
 
-    print(
-        "📁 models/preprocessor.pkl"
-    )
+        if os.path.exists(file_path):
 
-    print(
-        "📁 models/feature_names.json"
-    )
+            size = (
+                os.path.getsize(
+                    file_path
+                ) / 1024
+            )
 
-    print(
-        "📁 outputs/model_metrics.csv"
-    )
+            print(
+                f"✅ {file_path} "
+                f"({size:.1f} KB)"
+            )
 
-    print(
-        "📁 outputs/confusion_matrix_*.png"
-    )
+        else:
 
-    print(
-        "📁 outputs/feature_importance.png"
-    )
+            print(
+                f"❌ MISSING: {file_path}"
+            )
+
+            all_exist = False
+
+    if all_exist:
+
+        print(
+            "\n🎉 TRAINING COMPLETE!"
+        )
+
+        print(
+            "Your model files are ready."
+        )
+
+    else:
+
+        print(
+            "\n❌ Some model files are missing."
+        )
 
 
 if __name__ == "__main__":

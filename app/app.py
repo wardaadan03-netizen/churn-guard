@@ -1,5 +1,6 @@
 """
-ChurnGuard - Streamlit Customer Churn Prediction App
+ChurnGuard
+Streamlit Customer Churn Prediction Application
 """
 
 import os
@@ -11,30 +12,30 @@ import pandas as pd
 import streamlit as st
 
 
-# ============================================================
+# ---------------------------------------------------------
 # PROJECT PATH
-# ============================================================
+# ---------------------------------------------------------
 
-PROJECT_ROOT = os.path.dirname(
+BASE_DIR = os.path.dirname(
     os.path.dirname(
         os.path.abspath(__file__)
     )
 )
 
 MODEL_DIR = os.path.join(
-    PROJECT_ROOT,
+    BASE_DIR,
     "models"
 )
 
 OUTPUT_DIR = os.path.join(
-    PROJECT_ROOT,
+    BASE_DIR,
     "outputs"
 )
 
 
-# ============================================================
-# PAGE CONFIG
-# ============================================================
+# ---------------------------------------------------------
+# STREAMLIT CONFIG
+# ---------------------------------------------------------
 
 st.set_page_config(
     page_title="ChurnGuard",
@@ -43,9 +44,9 @@ st.set_page_config(
 )
 
 
-# ============================================================
+# ---------------------------------------------------------
 # CSS
-# ============================================================
+# ---------------------------------------------------------
 
 st.markdown(
     """
@@ -55,44 +56,44 @@ st.markdown(
         font-size: 3rem;
         font-weight: 700;
         text-align: center;
-        margin-bottom: 5px;
+        margin-bottom: 0.2rem;
     }
 
     .sub-header {
         text-align: center;
-        font-size: 1.2rem;
         color: #666;
-        margin-bottom: 30px;
+        font-size: 1.2rem;
+        margin-bottom: 2rem;
     }
 
     .risk-high {
-        padding: 15px;
-        border-radius: 12px;
-        text-align: center;
-        font-size: 1.4rem;
-        font-weight: bold;
         background-color: #ff4b4b;
         color: white;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        font-weight: bold;
+        font-size: 20px;
     }
 
     .risk-medium {
-        padding: 15px;
-        border-radius: 12px;
-        text-align: center;
-        font-size: 1.4rem;
-        font-weight: bold;
         background-color: #ffa500;
         color: white;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        font-weight: bold;
+        font-size: 20px;
     }
 
     .risk-low {
-        padding: 15px;
-        border-radius: 12px;
-        text-align: center;
-        font-size: 1.4rem;
-        font-weight: bold;
         background-color: #00c853;
         color: white;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        font-weight: bold;
+        font-size: 20px;
     }
 
     </style>
@@ -101,9 +102,9 @@ st.markdown(
 )
 
 
-# ============================================================
+# ---------------------------------------------------------
 # LOAD ARTIFACTS
-# ============================================================
+# ---------------------------------------------------------
 
 @st.cache_resource
 def load_artifacts():
@@ -123,30 +124,37 @@ def load_artifacts():
         "feature_names.json"
     )
 
+    # Check files
+    missing = []
+
     if not os.path.exists(model_path):
+        missing.append(model_path)
 
-        return None, None, None, (
-            "best_model.pkl is missing. "
-            "Run `python src/train.py` first."
+    if not os.path.exists(preprocessor_path):
+        missing.append(preprocessor_path)
+
+    if not os.path.exists(feature_path):
+        missing.append(feature_path)
+
+    if missing:
+
+        st.error(
+            "❌ Model artifacts are missing."
         )
 
-    if not os.path.exists(
-        preprocessor_path
-    ):
-
-        return None, None, None, (
-            "preprocessor.pkl is missing. "
-            "Run `python src/train.py` first."
+        st.code(
+            "\n".join(missing)
         )
 
-    if not os.path.exists(
-        feature_path
-    ):
-
-        return None, None, None, (
-            "feature_names.json is missing. "
-            "Run `python src/train.py` first."
+        st.info(
+            "Run this from the Churn Guard project root:"
         )
+
+        st.code(
+            "python src/train.py"
+        )
+
+        return None, None, None
 
     try:
 
@@ -161,32 +169,30 @@ def load_artifacts():
         with open(
             feature_path,
             "r"
-        ) as file:
+        ) as f:
 
             feature_names = json.load(
-                file
+                f
             )
 
         return (
             model,
             preprocessor,
-            feature_names,
-            None
+            feature_names
         )
 
-    except Exception as error:
+    except Exception as e:
 
-        return (
-            None,
-            None,
-            None,
-            str(error)
+        st.error(
+            f"❌ Error loading artifacts: {e}"
         )
 
+        return None, None, None
 
-# ============================================================
+
+# ---------------------------------------------------------
 # HEADER
-# ============================================================
+# ---------------------------------------------------------
 
 st.markdown(
     '<div class="main-header">🔮 ChurnGuard</div>',
@@ -201,116 +207,102 @@ st.markdown(
 )
 
 
-# ============================================================
+# ---------------------------------------------------------
 # LOAD MODEL
-# ============================================================
+# ---------------------------------------------------------
 
-model, preprocessor, feature_names, error = (
+model, preprocessor, feature_names = (
     load_artifacts()
 )
 
-if error:
 
-    st.error(
-        f"⚠️ Error loading artifacts: {error}"
-    )
-
-    st.info(
-        "Run this command from the Churn Guard "
-        "project root:\n\n"
-        "`python src/train.py`"
-    )
-
+if model is None:
     st.stop()
 
 
-# ============================================================
+# ---------------------------------------------------------
 # SIDEBAR
-# ============================================================
+# ---------------------------------------------------------
 
 with st.sidebar:
 
-    st.header(
-        "🎯 About ChurnGuard"
-    )
+    st.header("🎯 About ChurnGuard")
 
     st.write(
-        "ChurnGuard predicts whether a customer "
-        "is likely to churn using machine learning."
+        """
+        ChurnGuard predicts whether a customer
+        is likely to churn using machine learning.
+        """
     )
 
     st.divider()
 
-    st.subheader(
-        "🤖 Models"
-    )
+    st.subheader("🤖 Models")
 
     st.write(
-        "• Logistic Regression\n"
-        "• Random Forest\n"
-        "• XGBoost"
+        """
+        • Logistic Regression  
+        • Random Forest  
+        • XGBoost
+        """
     )
 
     st.divider()
 
-    st.subheader(
-        "📊 Dataset"
-    )
+    st.subheader("🛠️ Technologies")
 
     st.write(
-        "Sales & Marketing Customer Dataset"
+        """
+        Python  
+        Scikit-learn  
+        XGBoost  
+        Pandas  
+        Streamlit
+        """
     )
 
-    st.divider()
 
-    st.caption(
-        "Built with Python, Scikit-learn, "
-        "XGBoost and Streamlit."
-    )
-
-
-# ============================================================
+# ---------------------------------------------------------
 # TABS
-# ============================================================
+# ---------------------------------------------------------
 
-tab_prediction, tab_insights = st.tabs(
+tab1, tab2 = st.tabs(
     [
-        "🧑 Customer Prediction",
+        "🔮 Churn Prediction",
         "📊 Model Insights"
     ]
 )
 
 
-# ============================================================
-# CUSTOMER PREDICTION
-# ============================================================
+# =========================================================
+# TAB 1
+# =========================================================
 
-with tab_prediction:
+with tab1:
 
     st.header(
-        "Predict Customer Churn"
+        "Customer Churn Prediction"
     )
 
     st.write(
-        "Enter customer information below "
-        "to estimate their churn probability."
+        "Enter customer information to estimate churn risk."
     )
 
     with st.form(
         "prediction_form"
     ):
 
-        # ----------------------------------------------------
-        # Demographics
-        # ----------------------------------------------------
-
-        st.subheader(
-            "👤 Customer Information"
-        )
-
         col1, col2, col3 = st.columns(3)
 
+        # -------------------------------------------------
+        # DEMOGRAPHICS
+        # -------------------------------------------------
+
         with col1:
+
+            st.subheader(
+                "👤 Customer"
+            )
 
             gender = st.selectbox(
                 "Gender",
@@ -321,41 +313,40 @@ with tab_prediction:
                 ]
             )
 
-            age = st.number_input(
+            age = st.slider(
                 "Age",
-                min_value=18,
-                max_value=90,
-                value=35
+                18,
+                90,
+                35
             )
 
-            country = st.text_input(
+            country = st.selectbox(
                 "Country",
-                value="USA"
+                [
+                    "Germany",
+                    "India",
+                    "UK",
+                    "France",
+                    "USA",
+                    "Canada",
+                    "Australia"
+                ]
             )
 
-            city = st.text_input(
-                "City",
-                value="New York"
-            )
-
-        with col2:
-
-            acquisition_channel = (
-                st.selectbox(
-                    "Acquisition Channel",
-                    [
-                        "Organic",
-                        "Google Ads",
-                        "Facebook Ads",
-                        "Referral",
-                        "Email Campaign",
-                        "Other"
-                    ]
-                )
+            acquisition_channel = st.selectbox(
+                "Acquisition Channel",
+                [
+                    "Organic",
+                    "Google Ads",
+                    "Facebook Ads",
+                    "Referral",
+                    "Email Campaign",
+                    "Other"
+                ]
             )
 
             device_type = st.selectbox(
-                "Device Type",
+                "Device",
                 [
                     "Mobile",
                     "Desktop",
@@ -364,7 +355,7 @@ with tab_prediction:
             )
 
             subscription_type = st.selectbox(
-                "Subscription Type",
+                "Subscription",
                 [
                     "Monthly",
                     "Annual"
@@ -382,14 +373,92 @@ with tab_prediction:
                 ]
             )
 
-        with col3:
-
             is_premium_user = st.selectbox(
                 "Premium User",
                 [
                     "Yes",
                     "No"
                 ]
+            )
+
+        # -------------------------------------------------
+        # ENGAGEMENT
+        # -------------------------------------------------
+
+        with col2:
+
+            st.subheader(
+                "📱 Engagement"
+            )
+
+            total_visits = st.number_input(
+                "Total Visits",
+                min_value=0,
+                value=50
+            )
+
+            avg_session_time = st.number_input(
+                "Average Session Time",
+                min_value=0.0,
+                value=5.0,
+                step=0.5
+            )
+
+            pages_per_session = st.number_input(
+                "Pages per Session",
+                min_value=0.0,
+                value=5.0,
+                step=0.5
+            )
+
+            email_open_rate = st.slider(
+                "Email Open Rate",
+                0.0,
+                1.0,
+                0.40
+            )
+
+            email_click_rate = st.slider(
+                "Email Click Rate",
+                0.0,
+                1.0,
+                0.10
+            )
+
+            purchase_frequency = st.number_input(
+                "Purchases - Last 3 Months",
+                min_value=0,
+                value=3
+            )
+
+            support_tickets = st.number_input(
+                "Support Tickets",
+                min_value=0,
+                value=0
+            )
+
+        # -------------------------------------------------
+        # FINANCIAL
+        # -------------------------------------------------
+
+        with col3:
+
+            st.subheader(
+                "💰 Financial"
+            )
+
+            total_spent = st.number_input(
+                "Total Spent",
+                min_value=0.0,
+                value=500.0,
+                step=10.0
+            )
+
+            avg_order_value = st.number_input(
+                "Average Order Value",
+                min_value=0.0,
+                value=50.0,
+                step=5.0
             )
 
             discount_used = st.selectbox(
@@ -408,115 +477,6 @@ with tab_prediction:
                 ]
             )
 
-            used_coupon = st.selectbox(
-                "Coupon Used",
-                [
-                    "Yes",
-                    "No"
-                ]
-            )
-
-        # ----------------------------------------------------
-        # Engagement
-        # ----------------------------------------------------
-
-        st.subheader(
-            "📱 Engagement"
-        )
-
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-
-            total_visits = st.number_input(
-                "Total Visits",
-                min_value=0,
-                value=50
-            )
-
-            avg_session_time = st.number_input(
-                "Average Session Time",
-                min_value=0.0,
-                value=5.0,
-                step=0.5
-            )
-
-        with col2:
-
-            pages_per_session = st.number_input(
-                "Pages per Session",
-                min_value=0.0,
-                value=5.0,
-                step=0.5
-            )
-
-            email_open_rate = st.slider(
-                "Email Open Rate",
-                0.0,
-                1.0,
-                0.40,
-                0.01
-            )
-
-        with col3:
-
-            email_click_rate = st.slider(
-                "Email Click Rate",
-                0.0,
-                1.0,
-                0.10,
-                0.01
-            )
-
-            purchase_frequency = (
-                st.number_input(
-                    "Purchases - Last 3 Months",
-                    min_value=0,
-                    value=3
-                )
-            )
-
-        # ----------------------------------------------------
-        # Financial
-        # ----------------------------------------------------
-
-        st.subheader(
-            "💰 Financial & Support"
-        )
-
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-
-            total_spent = st.number_input(
-                "Total Spent",
-                min_value=0.0,
-                value=500.0,
-                step=10.0
-            )
-
-            avg_order_value = st.number_input(
-                "Average Order Value",
-                min_value=0.0,
-                value=50.0,
-                step=5.0
-            )
-
-            lifetime_value = st.number_input(
-                "Lifetime Value",
-                min_value=0.0,
-                value=1000.0,
-                step=50.0
-            )
-
-        with col2:
-
-            support_tickets = st.number_input(
-                "Support Tickets",
-                min_value=0,
-                value=1
-            )
-
             delivery_delay_days = st.number_input(
                 "Delivery Delay Days",
                 min_value=0,
@@ -530,251 +490,174 @@ with tab_prediction:
                 step=5.0
             )
 
-        with col3:
-
-            satisfaction_score = st.number_input(
-                "Satisfaction Score",
+            lifetime_value = st.number_input(
+                "Lifetime Value",
                 min_value=0.0,
-                max_value=10.0,
-                value=7.0,
-                step=0.5
+                value=1000.0,
+                step=50.0
             )
-
-            nps_score = st.number_input(
-                "NPS Score",
-                min_value=0.0,
-                max_value=10.0,
-                value=7.0,
-                step=0.5
-            )
-
-            signup_days = st.number_input(
-                "Days Since Signup",
-                min_value=0,
-                value=365
-            )
-
-            purchase_days = st.number_input(
-                "Days Since Last Purchase",
-                min_value=0,
-                value=30
-            )
-
-        # ----------------------------------------------------
-        # Submit
-        # ----------------------------------------------------
 
         submitted = st.form_submit_button(
             "🔮 Predict Churn",
             use_container_width=True
         )
 
-
-# ============================================================
-# PREDICTION
-# ============================================================
+    # -----------------------------------------------------
+    # PREDICTION
+    # -----------------------------------------------------
 
     if submitted:
 
         try:
 
-            # -----------------------------------------------
-            # Convert categorical yes/no values
-            # -----------------------------------------------
-
-            premium_value = (
+            premium = (
                 1
                 if is_premium_user == "Yes"
                 else 0
             )
 
-            discount_value = (
+            discount = (
                 1
                 if discount_used == "Yes"
                 else 0
             )
 
-            refund_value = (
+            refund = (
                 1
                 if refund_requested == "Yes"
                 else 0
             )
 
-            coupon_value = (
-                1
-                if used_coupon == "Yes"
-                else 0
-            )
-
-            # -----------------------------------------------
-            # Derived features
-            # -----------------------------------------------
-
-            engagement_score = (
-                total_visits
-                * avg_session_time
-                * pages_per_session
-            )
-
-            engagement_score = min(
-                engagement_score,
-                1000
-            )
-
-            revenue_per_visit = (
-                total_spent
-                / total_visits
-                if total_visits > 0
-                else 0
-            )
-
-            risk_score = (
-                support_tickets * 0.3
-                + refund_value * 0.7
-            )
-
-            is_loyal = (
-                1
-                if (
-                    nps_score >= 8
-                    and premium_value == 1
-                )
-                else 0
-            )
-
-            interaction_rate = (
-                email_click_rate
-                / (email_open_rate + 0.01)
-            )
-
-            # -----------------------------------------------
-            # Input dataframe
-            # -----------------------------------------------
-
+            # Create raw input
             input_data = {
 
-                "gender":
-                    gender,
-
-                "age":
-                    age,
-
-                "country":
-                    country,
-
-                "city":
-                    city,
-
+                "gender": gender,
+                "age": age,
+                "country": country,
                 "acquisition_channel":
                     acquisition_channel,
-
-                "device_type":
-                    device_type,
-
+                "device_type": device_type,
                 "subscription_type":
                     subscription_type,
-
                 "is_premium_user":
-                    premium_value,
-
+                    premium,
                 "total_visits":
                     total_visits,
-
                 "avg_session_time":
                     avg_session_time,
-
                 "pages_per_session":
                     pages_per_session,
-
                 "email_open_rate":
                     email_open_rate,
-
                 "email_click_rate":
                     email_click_rate,
-
                 "total_spent":
                     total_spent,
-
                 "avg_order_value":
                     avg_order_value,
-
                 "discount_used":
-                    discount_value,
-
+                    discount,
                 "support_tickets":
                     support_tickets,
-
                 "refund_requested":
-                    refund_value,
-
+                    refund,
                 "delivery_delay_days":
                     delivery_delay_days,
-
                 "payment_method":
                     payment_method,
-
-                "satisfaction_score":
-                    satisfaction_score,
-
-                "nps_score":
-                    nps_score,
-
                 "marketing_spend_per_user":
                     marketing_spend,
-
                 "lifetime_value":
                     lifetime_value,
-
                 "last_3_month_purchase_freq":
                     purchase_frequency,
-
                 "used_coupon":
-                    coupon_value,
+                    0,
 
+                # Date-derived features
                 "days_since_signup":
-                    signup_days,
-
+                    365,
                 "days_since_last_purchase":
-                    purchase_days,
-
-                "engagement_score":
-                    engagement_score,
-
-                "revenue_per_visit":
-                    revenue_per_visit,
-
-                "risk_score":
-                    risk_score,
-
-                "interaction_rate":
-                    interaction_rate,
-
-                "is_loyal":
-                    is_loyal
+                    30
             }
 
             input_df = pd.DataFrame(
                 [input_data]
             )
 
-            # -----------------------------------------------
-            # Transform
-            # -----------------------------------------------
+            # -------------------------------------------------
+            # Feature engineering
+            # -------------------------------------------------
 
-            input_transformed = (
+            input_df["engagement_score"] = (
+                input_df["total_visits"]
+                * input_df["avg_session_time"]
+                * input_df["pages_per_session"]
+            ).clip(0, 1000)
+
+            input_df["revenue_per_visit"] = (
+                input_df["total_spent"]
+                / (
+                    input_df["total_visits"]
+                    + 1
+                )
+            )
+
+            input_df["risk_score"] = (
+                input_df["support_tickets"]
+                * 0.3
+                +
+                input_df["refund_requested"]
+                * 0.7
+            )
+
+            input_df["is_loyal"] = (
+                (
+                    input_df["is_premium_user"]
+                    == 1
+                )
+                &
+                (
+                    input_df["nps_score"]
+                    if "nps_score" in input_df
+                    else True
+                )
+            ).astype(int)
+
+            # Since NPS isn't collected in the UI,
+            # use premium status as a simple loyalty proxy.
+            input_df["is_loyal"] = (
+                input_df["is_premium_user"]
+                == 1
+            ).astype(int)
+
+            input_df["interaction_rate"] = (
+                input_df["email_click_rate"]
+                /
+                (
+                    input_df["email_open_rate"]
+                    + 0.01
+                )
+            )
+
+            # -------------------------------------------------
+            # Transform
+            # -------------------------------------------------
+
+            transformed = (
                 preprocessor.transform(
                     input_df
                 )
             )
 
-            # -----------------------------------------------
-            # Prediction
-            # -----------------------------------------------
+            # -------------------------------------------------
+            # Predict
+            # -------------------------------------------------
 
             probability = (
                 model.predict_proba(
-                    input_transformed
-                )[0][1]
+                    transformed
+                )[0, 1]
             )
 
             prediction = (
@@ -783,54 +666,55 @@ with tab_prediction:
                 else 0
             )
 
-            # -----------------------------------------------
-            # Results
-            # -----------------------------------------------
+            # -------------------------------------------------
+            # RESULTS
+            # -------------------------------------------------
 
             st.divider()
 
-            st.subheader(
-                "📊 Prediction Results"
+            st.header(
+                "📊 Prediction Result"
             )
 
-            result1, result2, result3 = (
-                st.columns(3)
-            )
+            c1, c2, c3 = st.columns(3)
 
-            with result1:
+            with c1:
 
                 st.metric(
                     "Churn Probability",
                     f"{probability:.1%}"
                 )
 
-            with result2:
+            with c2:
 
                 if probability >= 0.50:
 
-                    risk = "HIGH"
-                    css_class = "risk-high"
+                    st.markdown(
+                        '<div class="risk-high">'
+                        '🔴 HIGH RISK'
+                        '</div>',
+                        unsafe_allow_html=True
+                    )
 
                 elif probability >= 0.25:
 
-                    risk = "MEDIUM"
-                    css_class = "risk-medium"
+                    st.markdown(
+                        '<div class="risk-medium">'
+                        '🟠 MEDIUM RISK'
+                        '</div>',
+                        unsafe_allow_html=True
+                    )
 
                 else:
 
-                    risk = "LOW"
-                    css_class = "risk-low"
+                    st.markdown(
+                        '<div class="risk-low">'
+                        '🟢 LOW RISK'
+                        '</div>',
+                        unsafe_allow_html=True
+                    )
 
-                st.markdown(
-                    f"""
-                    <div class="{css_class}">
-                    Risk: {risk}
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-
-            with result3:
+            with c3:
 
                 if prediction == 1:
 
@@ -844,127 +728,71 @@ with tab_prediction:
                         "✅ Customer likely to STAY"
                     )
 
-            # -----------------------------------------------
-            # Risk drivers
-            # -----------------------------------------------
+            # -------------------------------------------------
+            # BUSINESS RECOMMENDATION
+            # -------------------------------------------------
 
             st.subheader(
-                "🎯 Potential Risk Drivers"
+                "💡 Recommended Action"
             )
 
-            drivers = []
+            if probability >= 0.50:
 
-            if purchase_days > 60:
+                st.warning(
+                    """
+                    **Immediate retention action recommended.**
 
-                drivers.append(
-                    "Low recent purchase activity"
+                    Consider offering a personalized discount,
+                    contacting the customer, improving support,
+                    or providing a subscription incentive.
+                    """
                 )
 
-            if total_visits < 20:
+            elif probability >= 0.25:
 
-                drivers.append(
-                    "Low website engagement"
-                )
+                st.info(
+                    """
+                    **Monitor this customer.**
 
-            if purchase_frequency < 2:
-
-                drivers.append(
-                    "Low purchase frequency"
-                )
-
-            if support_tickets > 2:
-
-                drivers.append(
-                    "Multiple support tickets"
-                )
-
-            if refund_value == 1:
-
-                drivers.append(
-                    "Refund requested"
-                )
-
-            if email_open_rate < 0.20:
-
-                drivers.append(
-                    "Low email engagement"
-                )
-
-            if premium_value == 0:
-
-                drivers.append(
-                    "Customer is not a premium user"
-                )
-
-            if not drivers:
-
-                st.success(
-                    "No major manually identified "
-                    "risk factors."
+                    Increase engagement through targeted
+                    emails, offers, and personalized content.
+                    """
                 )
 
             else:
 
-                for driver in drivers:
+                st.success(
+                    """
+                    **Customer appears stable.**
 
-                    st.warning(
-                        f"📌 {driver}"
-                    )
+                    Continue normal engagement and loyalty
+                    activities.
+                    """
+                )
 
-        except Exception as error:
+        except Exception as e:
 
             st.error(
-                f"Prediction error: {error}"
+                f"❌ Prediction error: {e}"
             )
 
+            st.exception(e)
 
-# ============================================================
-# MODEL INSIGHTS
-# ============================================================
 
-with tab_insights:
+# =========================================================
+# TAB 2
+# =========================================================
+
+with tab2:
 
     st.header(
-        "🤖 Model Insights"
+        "📊 Model Insights"
     )
-
-    # --------------------------------------------------------
-    # Metrics
-    # --------------------------------------------------------
 
     metrics_path = os.path.join(
         OUTPUT_DIR,
         "model_metrics.csv"
     )
-
-    if os.path.exists(
-        metrics_path
-    ):
-
-        st.subheader(
-            "📈 Model Performance"
-        )
-
-        metrics_df = pd.read_csv(
-            metrics_path,
-            index_col=0
-        )
-
-        st.dataframe(
-            metrics_df.round(4),
-            use_container_width=True
-        )
-
-    else:
-
-        st.info(
-            "Run the training pipeline to "
-            "generate model metrics."
-        )
-
-    # --------------------------------------------------------
-    # Feature importance
-    # --------------------------------------------------------
 
     importance_path = os.path.join(
         OUTPUT_DIR,
@@ -972,11 +800,57 @@ with tab_insights:
     )
 
     if os.path.exists(
+        metrics_path
+    ):
+
+        metrics_df = pd.read_csv(
+            metrics_path
+        )
+
+        st.subheader(
+            "Model Comparison"
+        )
+
+        st.dataframe(
+            metrics_df,
+            use_container_width=True
+        )
+
+        st.subheader(
+            "🏆 Best Model"
+        )
+
+        best_row = metrics_df.loc[
+            metrics_df["f1"].idxmax()
+        ]
+
+        st.metric(
+            "Best Model",
+            best_row["model"]
+        )
+
+        st.metric(
+            "F1 Score",
+            f"{best_row['f1']:.3f}"
+        )
+
+        st.metric(
+            "ROC-AUC",
+            f"{best_row['roc_auc']:.3f}"
+        )
+
+    else:
+
+        st.info(
+            "Model metrics will appear after training."
+        )
+
+    if os.path.exists(
         importance_path
     ):
 
         st.subheader(
-            "📊 Feature Importance"
+            "🌟 Feature Importance"
         )
 
         st.image(
@@ -984,30 +858,19 @@ with tab_insights:
             use_container_width=True
         )
 
-    else:
 
-        st.info(
-            "Feature importance will appear "
-            "after model training."
-        )
-
-
-# ============================================================
+# ---------------------------------------------------------
 # FOOTER
-# ============================================================
+# ---------------------------------------------------------
 
 st.divider()
 
 st.markdown(
     """
-    <div style="text-align:center">
-
-    **ChurnGuard v1.0**
-
-    Customer Churn Intelligence System
-
-    Built with Python • Scikit-learn • XGBoost • Streamlit
-
+    <div style="text-align:center; color:#777;">
+        ChurnGuard | Machine Learning Fundamentals Capstone
+        <br>
+        Built with Python, Scikit-learn, XGBoost and Streamlit
     </div>
     """,
     unsafe_allow_html=True

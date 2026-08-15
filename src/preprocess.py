@@ -1,6 +1,5 @@
 """
-ChurnGuard - Data Preprocessing Pipeline
-Customer churn prediction using the Sales & Marketing dataset.
+Data preprocessing pipeline for ChurnGuard.
 """
 
 import os
@@ -15,12 +14,29 @@ from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 
 
-# ============================================================
+# ---------------------------------------------------------
+# PROJECT PATHS
+# ---------------------------------------------------------
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+DATA_DIR = os.path.join(BASE_DIR, "data")
+MODEL_DIR = os.path.join(BASE_DIR, "models")
+OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
+
+
+# ---------------------------------------------------------
 # LOAD DATA
-# ============================================================
+# ---------------------------------------------------------
 
 def load_data(filepath):
-    """Load the Sales & Marketing customer dataset."""
+    """Load the customer dataset."""
+
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(
+            f"\nDataset not found:\n{filepath}\n\n"
+            f"Make sure the CSV is inside the data folder."
+        )
 
     df = pd.read_csv(filepath)
 
@@ -35,20 +51,20 @@ def load_data(filepath):
     return df
 
 
-# ============================================================
+# ---------------------------------------------------------
 # CLEAN DATA
-# ============================================================
+# ---------------------------------------------------------
 
 def clean_data(df):
     """Clean and prepare raw customer data."""
 
     df = df.copy()
 
-    # --------------------------------------------------------
-    # Numeric missing values
-    # --------------------------------------------------------
+    # -----------------------------
+    # Missing values
+    # -----------------------------
 
-    numeric_median_columns = [
+    numeric_fill_columns = [
         "satisfaction_score",
         "nps_score",
         "age",
@@ -57,50 +73,58 @@ def clean_data(df):
         "marketing_spend_per_user"
     ]
 
-    for column in numeric_median_columns:
+    for col in numeric_fill_columns:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+            df[col] = df[col].fillna(df[col].median())
 
-        if column in df.columns:
-            df[column] = pd.to_numeric(
-                df[column],
-                errors="coerce"
-            )
-
-            df[column] = df[column].fillna(
-                df[column].median()
-            )
-
-    # --------------------------------------------------------
-    # Age limits
-    # --------------------------------------------------------
+    # -----------------------------
+    # Age
+    # -----------------------------
 
     if "age" in df.columns:
+        df["age"] = df["age"].clip(18, 90)
 
-        df["age"] = df["age"].clip(
-            lower=18,
-            upper=90
-        )
-
-    # --------------------------------------------------------
-    # Coupon usage
-    # --------------------------------------------------------
+    # -----------------------------
+    # Coupon
+    # -----------------------------
 
     if "coupon_code" in df.columns:
+        df["used_coupon"] = df["coupon_code"].notna().astype(int)
+        df.drop(columns=["coupon_code"], inplace=True)
 
-        df["used_coupon"] = (
-            df["coupon_code"]
-            .notna()
-            .astype(int)
-        )
+    # -----------------------------
+    # Boolean columns
+    # -----------------------------
 
-        df.drop(
-            "coupon_code",
-            axis=1,
-            inplace=True
-        )
+    boolean_columns = [
+        "is_premium_user",
+        "discount_used",
+        "refund_requested"
+    ]
 
-    # --------------------------------------------------------
-    # Convert dates
-    # --------------------------------------------------------
+    for col in boolean_columns:
+        if col in df.columns:
+            if df[col].dtype == "object":
+                df[col] = (
+                    df[col]
+                    .astype(str)
+                    .str.lower()
+                    .map({
+                        "yes": 1,
+                        "true": 1,
+                        "1": 1,
+                        "no": 0,
+                        "false": 0,
+                        "0": 0
+                    })
+                )
+
+            df[col] = df[col].fillna(0).astype(int)
+
+    # -----------------------------
+    # Dates
+    # -----------------------------
 
     if "signup_date" in df.columns:
 
@@ -109,6 +133,19 @@ def clean_data(df):
             errors="coerce"
         )
 
+        df["days_since_signup"] = (
+            pd.Timestamp.now() - df["signup_date"]
+        ).dt.days
+
+        df["days_since_signup"] = (
+            df["days_since_signup"]
+            .fillna(df["days_since_signup"].median())
+            .clip(lower=0)
+        )
+
+    else:
+        df["days_since_signup"] = 0
+
     if "last_purchase_date" in df.columns:
 
         df["last_purchase_date"] = pd.to_datetime(
@@ -116,155 +153,86 @@ def clean_data(df):
             errors="coerce"
         )
 
-    # --------------------------------------------------------
-    # Date-based features
-    # --------------------------------------------------------
-
-    reference_date = pd.Timestamp.today().normalize()
-
-    if "signup_date" in df.columns:
-
-        df["days_since_signup"] = (
-            reference_date - df["signup_date"]
-        ).dt.days
-
-        df["days_since_signup"] = (
-            df["days_since_signup"]
-            .fillna(
-                df["days_since_signup"].median()
-            )
-            .clip(lower=0)
-        )
-
-    if "last_purchase_date" in df.columns:
-
         df["days_since_last_purchase"] = (
-            reference_date - df["last_purchase_date"]
+            pd.Timestamp.now() - df["last_purchase_date"]
         ).dt.days
+
+        max_days = df["days_since_last_purchase"].max()
 
         df["days_since_last_purchase"] = (
             df["days_since_last_purchase"]
-            .fillna(
-                df["days_since_last_purchase"].median()
-            )
+            .fillna(max_days)
             .clip(lower=0)
         )
 
-    # --------------------------------------------------------
+    else:
+        df["days_since_last_purchase"] = 0
+
     # Remove original dates
-    # --------------------------------------------------------
+    for col in ["signup_date", "last_purchase_date"]:
+        if col in df.columns:
+            df.drop(columns=[col], inplace=True)
 
-    for column in [
-        "signup_date",
-        "last_purchase_date"
-    ]:
-
-        if column in df.columns:
-
-            df.drop(
-                column,
-                axis=1,
-                inplace=True
-            )
-
-    # --------------------------------------------------------
-    # Remove customer ID
-    # --------------------------------------------------------
+    # -----------------------------
+    # Customer ID
+    # -----------------------------
 
     if "customer_id" in df.columns:
-
-        df.drop(
-            "customer_id",
-            axis=1,
-            inplace=True
-        )
+        df.drop(columns=["customer_id"], inplace=True)
 
     return df
 
 
-# ============================================================
+# ---------------------------------------------------------
 # FEATURE ENGINEERING
-# ============================================================
+# ---------------------------------------------------------
 
 def create_features(df):
-    """Create additional customer behavior features."""
+    """Create additional business features."""
 
     df = df.copy()
 
-    # --------------------------------------------------------
-    # Engagement score
-    # --------------------------------------------------------
-
+    # Engagement
     df["engagement_score"] = (
         df["total_visits"]
         * df["avg_session_time"]
         * df["pages_per_session"]
     )
 
-    df["engagement_score"] = (
-        df["engagement_score"]
-        .replace([np.inf, -np.inf], np.nan)
-        .fillna(0)
-        .clip(0, 1000)
-    )
+    df["engagement_score"] = df["engagement_score"].clip(0, 1000)
 
-    # --------------------------------------------------------
     # Revenue per visit
-    # --------------------------------------------------------
-
     df["revenue_per_visit"] = (
         df["total_spent"]
-        / df["total_visits"].replace(0, np.nan)
+        / (df["total_visits"] + 1)
     )
 
-    df["revenue_per_visit"] = (
-        df["revenue_per_visit"]
-        .replace([np.inf, -np.inf], np.nan)
-        .fillna(0)
-    )
-
-    # --------------------------------------------------------
-    # Customer risk score
-    # --------------------------------------------------------
-
+    # Risk score
     df["risk_score"] = (
         df["support_tickets"] * 0.3
         + df["refund_requested"] * 0.7
     )
 
-    # --------------------------------------------------------
-    # Loyalty indicator
-    # --------------------------------------------------------
-
+    # Loyalty
     df["is_loyal"] = (
         (df["nps_score"] >= 8)
         & (df["is_premium_user"] == 1)
     ).astype(int)
 
-    # --------------------------------------------------------
-    # Email interaction rate
-    # --------------------------------------------------------
-
+    # Email interaction
     df["interaction_rate"] = (
         df["email_click_rate"]
         / (df["email_open_rate"] + 0.01)
     )
 
-    df["interaction_rate"] = (
-        df["interaction_rate"]
-        .replace([np.inf, -np.inf], np.nan)
-        .fillna(0)
-    )
-
     return df
 
 
-# ============================================================
+# ---------------------------------------------------------
 # PREPROCESSOR
-# ============================================================
+# ---------------------------------------------------------
 
 def build_preprocessor():
-    """Build numerical and categorical preprocessing pipeline."""
 
     numeric_features = [
         "age",
@@ -279,8 +247,6 @@ def build_preprocessor():
         "support_tickets",
         "refund_requested",
         "delivery_delay_days",
-        "satisfaction_score",
-        "nps_score",
         "marketing_spend_per_user",
         "lifetime_value",
         "last_3_month_purchase_freq",
@@ -295,15 +261,16 @@ def build_preprocessor():
     categorical_features = [
         "gender",
         "country",
-        "city",
         "acquisition_channel",
         "device_type",
         "subscription_type",
         "payment_method",
-        "used_coupon"
+        "used_coupon",
+        "is_premium_user",
+        "is_loyal"
     ]
 
-    numeric_pipeline = Pipeline(
+    numeric_transformer = Pipeline(
         steps=[
             (
                 "imputer",
@@ -316,7 +283,7 @@ def build_preprocessor():
         ]
     )
 
-    categorical_pipeline = Pipeline(
+    categorical_transformer = Pipeline(
         steps=[
             (
                 "imputer",
@@ -338,12 +305,12 @@ def build_preprocessor():
         transformers=[
             (
                 "num",
-                numeric_pipeline,
+                numeric_transformer,
                 numeric_features
             ),
             (
                 "cat",
-                categorical_pipeline,
+                categorical_transformer,
                 categorical_features
             )
         ],
@@ -353,16 +320,12 @@ def build_preprocessor():
     return preprocessor
 
 
-# ============================================================
+# ---------------------------------------------------------
 # FEATURE NAMES
-# ============================================================
+# ---------------------------------------------------------
 
 def get_feature_names(preprocessor):
-    """Return feature names after preprocessing."""
 
-    feature_names = []
-
-    # Numerical features
     numeric_features = [
         "age",
         "total_visits",
@@ -376,8 +339,6 @@ def get_feature_names(preprocessor):
         "support_tickets",
         "refund_requested",
         "delivery_delay_days",
-        "satisfaction_score",
-        "nps_score",
         "marketing_spend_per_user",
         "lifetime_value",
         "last_3_month_purchase_freq",
@@ -389,116 +350,72 @@ def get_feature_names(preprocessor):
         "interaction_rate"
     ]
 
-    feature_names.extend(numeric_features)
-
-    # Categorical features
     categorical_features = [
         "gender",
         "country",
-        "city",
         "acquisition_channel",
         "device_type",
         "subscription_type",
         "payment_method",
-        "used_coupon"
+        "used_coupon",
+        "is_premium_user",
+        "is_loyal"
     ]
 
-    encoder = (
+    cat_pipeline = (
         preprocessor
         .named_transformers_["cat"]
         .named_steps["onehot"]
     )
 
-    encoded_names = encoder.get_feature_names_out(
+    cat_names = cat_pipeline.get_feature_names_out(
         categorical_features
     )
 
-    feature_names.extend(
-        encoded_names.tolist()
-    )
-
-    return feature_names
+    return numeric_features + cat_names.tolist()
 
 
-# ============================================================
+# ---------------------------------------------------------
 # SAVE ARTIFACTS
-# ============================================================
+# ---------------------------------------------------------
 
 def save_artifacts(
     preprocessor,
     feature_names,
-    model,
-    output_dir="models"
+    model
 ):
-    """Save trained model and preprocessing artifacts."""
 
-    os.makedirs(
-        output_dir,
-        exist_ok=True
+    os.makedirs(MODEL_DIR, exist_ok=True)
+
+    preprocessor_path = os.path.join(
+        MODEL_DIR,
+        "preprocessor.pkl"
     )
 
-    joblib.dump(
-        model,
-        os.path.join(
-            output_dir,
-            "best_model.pkl"
-        )
+    model_path = os.path.join(
+        MODEL_DIR,
+        "best_model.pkl"
+    )
+
+    feature_path = os.path.join(
+        MODEL_DIR,
+        "feature_names.json"
     )
 
     joblib.dump(
         preprocessor,
-        os.path.join(
-            output_dir,
-            "preprocessor.pkl"
-        )
+        preprocessor_path
     )
 
-    with open(
-        os.path.join(
-            output_dir,
-            "feature_names.json"
-        ),
-        "w"
-    ) as file:
-
-        json.dump(
-            feature_names,
-            file,
-            indent=2
-        )
-
-    print(
-        f"✅ Artifacts saved to {output_dir}/"
+    joblib.dump(
+        model,
+        model_path
     )
 
+    with open(feature_path, "w") as f:
+        json.dump(feature_names, f, indent=2)
 
-# ============================================================
-# TEST
-# ============================================================
-
-if __name__ == "__main__":
-
-    filepath = (
-        "data/"
-        "Sales - Marketing customer dataset.csv"
-    )
-
-    df = load_data(filepath)
-
-    print(
-        f"Loaded dataset: {df.shape}"
-    )
-
-    df = clean_data(df)
-
-    df = create_features(df)
-
-    print(
-        f"Processed dataset: {df.shape}"
-    )
-
-    print("\nColumns:")
-
-    print(
-        df.columns.tolist()
-    )
+    print("\n✅ MODEL ARTIFACTS SAVED")
+    print(f"   Model:        {model_path}")
+    print(f"   Preprocessor: {preprocessor_path}")
+    print(f"   Features:     {feature_path}")
